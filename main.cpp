@@ -140,7 +140,12 @@ int main(int argc, char** argv){
 
   // Run analysis
   EMAnalyzer em_analyzer(snp_vcf_file, init_randomly);
-  em_analyzer.analyze(reader, error_rate);
+  if (em_analyzer.analyze(reader, error_rate)){
+    std::cout << "Sample fraction estimates" << "\n";
+    em_analyzer.print_sample_priors(std::cout);
+  }
+  else
+    std::cout << "Sample fraction estimation failed to converge" << "\n";
 
   reader.Close();
   total_time = (clock() - total_time)/CLOCKS_PER_SEC;

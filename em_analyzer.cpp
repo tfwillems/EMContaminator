@@ -57,7 +57,7 @@ bool EMAnalyzer::run_EM(double error_rate, double& LL){
     }
 
     // M-Step: Reestimate the sample fractions
-    // For each sample, use a read ownsership pseudocount of exp(LOG_READ_PRIOR_PC)
+    // For each sample, use a read ownership pseudocount of exp(LOG_READ_PRIOR_PC)
     // Use streaming log-sum-exp trick to avoid underflow
     std::vector<double> log_priors_max(num_samples_, LOG_READ_PRIOR_PC);
     std::vector<double> log_priors_total(num_samples_, 1.0);
@@ -85,6 +85,7 @@ bool EMAnalyzer::run_EM(double error_rate, double& LL){
 
 bool EMAnalyzer::analyze(BamTools::BamMultiReader& reader, double error_rate){
   int32_t snp_match_count = 0, snp_mismatch_count = 0;
+  BamTools::RefVector ref_vector = reader.GetReferenceData();
 
   // Load and store all of the relevant alignment information
   BamTools::BamAlignment alignment;
@@ -92,8 +93,7 @@ bool EMAnalyzer::analyze(BamTools::BamMultiReader& reader, double error_rate){
     if (!alignment.IsMapped() || alignment.Position == 0 || alignment.CigarData.size() == 0 || alignment.Length == 0)
       continue;
 
-    printErrorAndDie("Extract coords from alignment");
-    std::string chrom;
+    std::string chrom  = ref_vector[alignment.RefID].RefName;
     int32_t start      = alignment.Position;
     int32_t end        = alignment.GetEndPosition();
     
@@ -149,7 +149,7 @@ bool EMAnalyzer::analyze(BamTools::BamMultiReader& reader, double error_rate){
     // TO DO: Discard entries with 0 informative SNPs?
   }
 
-  std::cerr << "SNP match    count = " << snp_match_count    << "\n"
+  std::cout << "SNP match    count = " << snp_match_count    << "\n"
 	    << "SNP mismatch count = " << snp_mismatch_count << "\n" << "\n";
 
   // Run the EM procedure and return whether or not it succeeded
