@@ -5,7 +5,7 @@ Infer the fraction of sequencing data that comes from each individual in a popul
 
 ## Installation
 EMContaminator requires a standard c++ compiler and [CMake](http://www.cmake.org/download/).
-To obtain it and all of its associated submodules, use:
+To obtain it, use:
 
     % git clone --recursive https://github.com/tfwillems/EMContaminator.git
 
