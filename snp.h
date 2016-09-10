@@ -2,17 +2,22 @@
 #define SNP_H_
 
 #include <assert.h>
+#include <stdint.h>
 #include <vector>
+
+#include "bamtools/include/api/BamAlignment.h"
 
 class SNP {
  private:
+  int32_t pos_;
   char ref_, alt_;
   int num_samples_;
   int* dosage_; // Number of non-reference SNPs for each sample
   
  public:
-  SNP(char ref, char alt, std::vector<char>& gt_a, std::vector<char>& gt_b){
+  SNP(int32_t pos, char ref, char alt, std::vector<char>& gt_a, std::vector<char>& gt_b){
     assert(gt_a.size() == gt_b.size());
+    pos_         = pos;
     ref_         = ref;
     alt_         = alt;
     num_samples_ = gt_a.size();
@@ -25,8 +30,9 @@ class SNP {
     }
   }
 
-  SNP(char ref, char alt, std::vector<int>& gt_a, std::vector<int>& gt_b){
+  SNP(int32_t pos, char ref, char alt, std::vector<int>& gt_a, std::vector<int>& gt_b){
     assert(gt_a.size() == gt_b.size());
+    pos_         = pos;
     ref_         = ref;
     alt_         = alt;
     num_samples_ = gt_a.size();
@@ -39,8 +45,9 @@ class SNP {
     }
   }
 
-  char ref() const { return ref_; }
-  char alt() const { return alt_; }
+  int32_t pos() const { return pos_; }
+  char    ref() const { return ref_; }
+  char    alt() const { return alt_; }
   
   ~SNP(){
     delete [] dosage_;
@@ -49,4 +56,15 @@ class SNP {
   double get_base_log_likelihood(char base, char quality, int sample_index, double log_correct, double log_error);
 };
 
+
+class SNPSorter {
+ public:
+  bool operator() (const SNP& snp_a, const SNP& snp_b){
+    return snp_a.pos() < snp_b.pos();
+  }
+};
+
+
+void extract_bases_and_qualities(BamTools::BamAlignment& aln, std::vector<SNP>& snps,
+				 std::vector<char>& bases,  std::vector<char>& quals);
 #endif
