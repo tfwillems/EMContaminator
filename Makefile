@@ -43,7 +43,7 @@ all: version EMContaminator
 # Create a tarball with static binaries
 .PHONY: static-dist
 static-dist:
-	rm -f HipSTR BamSieve
+	rm -f EMContaminator
 	$(MAKE) STATIC=1
 	( VER="$$(git describe --abbrev=7 --dirty --always --tags)" ;\
 	  DST="EMContaminator-$${VER}-static-$$(uname -s)-$$(uname -m)" ; \
