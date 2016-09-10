@@ -45,8 +45,8 @@ bool EMAnalyzer::run_EM(double error_rate, double& LL){
   while (num_iter <= MAX_EM_ITER){
     // E-Step: Compute each alignment's sample posteriors and the total LL of the new configuration
     double new_LL = 0;
-    for (unsigned int i = 0; i < alignments_.size(); i++)
-      new_LL += alignments_[i].recalc_log_sample_posteriors(log_sample_priors_, log_correct, log_error);
+    for (unsigned int i = 0; i < aln_entries_.size(); i++)
+      new_LL += aln_entries_[i].recalc_log_sample_posteriors(log_sample_priors_, log_correct, log_error);
 
     // Occasionally the log-likelihood isn't monotonically increasing b/c of the pseudocounts
     // used when recalculating the sample fractions. Let's return true anyways
@@ -61,8 +61,8 @@ bool EMAnalyzer::run_EM(double error_rate, double& LL){
     // Use streaming log-sum-exp trick to avoid underflow
     std::vector<double> log_priors_max(num_samples_, LOG_READ_PRIOR_PC);
     std::vector<double> log_priors_total(num_samples_, 1.0);
-    for (unsigned int i = 0; i < alignments_.size(); i++){
-      double* log_read_sample_posteriors = alignments_[i].get_log_sample_posteriors();
+    for (unsigned int i = 0; i < aln_entries_.size(); i++){
+      double* log_read_sample_posteriors = aln_entries_[i].get_log_sample_posteriors();
       for (unsigned int j = 0; j < num_samples_; j++)
 	update_streaming_log_sum_exp(log_read_sample_posteriors[j], log_priors_max[j], log_priors_total[j]);
     }
@@ -84,9 +84,10 @@ bool EMAnalyzer::run_EM(double error_rate, double& LL){
 }
 
 bool EMAnalyzer::analyze(BamTools::BamMultiReader& reader, double error_rate){
+  int32_t snp_match_count = 0, snp_mismatch_count = 0;
+
   // Load and store all of the relevant alignment information
   BamTools::BamAlignment alignment;
-  std::vector<SNP> snps;
   while (reader.GetNextAlignmentCore(alignment)){
     if (!alignment.IsMapped() || alignment.Position == 0 || alignment.CigarData.size() == 0 || alignment.Length == 0)
       continue;
@@ -99,6 +100,7 @@ bool EMAnalyzer::analyze(BamTools::BamMultiReader& reader, double error_rate){
     if(!snp_vcf_.set_region(chrom, start, end))
       printErrorAndDie("Failed to set the region to chromosome " + chrom + " in the SNP VCF. Please check the SNP VCF and rerun the analysis");
 
+    std::vector<SNP> snps;
     VCF::Variant snp_variant;
     while (snp_vcf_.get_next_variant(snp_variant)){
       if (!snp_variant.is_biallelic_snp())
@@ -122,15 +124,35 @@ bool EMAnalyzer::analyze(BamTools::BamMultiReader& reader, double error_rate){
       if (allele_counts[0] == 0 || allele_counts[1] == 0)
 	continue;
 
-
-      //SNP(char ref, char alt, std::vector<int>& gt_a, std::vector<int>& gt_b){
-
-
-      printErrorAndDie("Implement alignment SNP extraction...");
+      char ref = snp_variant.get_allele(0)[0];
+      char alt = snp_variant.get_allele(1)[0];
+      snps.push_back(SNP(snp_variant.get_position(), ref, alt, gts_a, gts_b));
     }
+
+    // Extract the bases and quality scores stored at each SNP
+    // SNPs without a matching base in the alignment will have a '-' character inserted
+    std::vector<char> bases, quals;
+    extract_bases_and_qualities(alignment, snps, bases, quals);
+
+    // Construct a new alignment entry
+    aln_entries_.push_back(AlignmentEntry(num_samples_));
+    for (unsigned int i = 0; i < snps.size(); i++){
+      if (bases[i] != '-'){
+	aln_entries_.back().add_snp(snps[i], bases[i], quals[i]);
+	if (bases[i] == snps[i].ref() || bases[i] == snps[i].alt())
+	  snp_match_count++;
+	else
+	  snp_mismatch_count++;
+      }
+    }
+
+    // TO DO: Discard entries with 0 informative SNPs?
   }
 
-  // Run the EM procedure
+  std::cerr << "SNP match    count = " << snp_match_count    << "\n"
+	    << "SNP mismatch count = " << snp_mismatch_count << "\n" << "\n";
+
+  // Run the EM procedure and return whether or not it succeeded
   double LL;
   return run_EM(error_rate, LL);
 }

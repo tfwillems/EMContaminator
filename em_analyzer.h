@@ -50,7 +50,7 @@ class EMAnalyzer {
   VCF::VCFReader snp_vcf_;
   int num_samples_;
   double* log_sample_priors_;
-  std::vector<AlignmentEntry> alignments_;
+  std::vector<AlignmentEntry> aln_entries_;
   bool init_randomly_;
 
   // Parameters for EM converge
