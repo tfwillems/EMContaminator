@@ -7,6 +7,8 @@
 
 double AlignmentEntry::recalc_log_sample_posteriors(double* log_sample_priors, double log_correct, double log_error){
   std::memcpy(log_sample_posteriors_, log_sample_priors, num_samples_*sizeof(double));
+  if (snps_.empty())
+    return 0;
   for(unsigned int i = 0; i < snps_.size(); i++)
     for (unsigned int j = 0; j < num_samples_; j++)
       log_sample_posteriors_[j] += snps_[i].get_base_log_likelihood(bases_[i], qualities_[i], j, log_correct, log_error);
