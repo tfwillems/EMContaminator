@@ -1,4 +1,4 @@
-# EMContaminator [![Build Status](https://travis-ci.org/tfwillems/HipSTR.svg?branch=master)](https://travis-ci.org/tfwillems/HipSTR)
+# EMContaminator [![Build Status](https://travis-ci.org/tfwillems/EMContaminator.svg?branch=master)](https://travis-ci.org/tfwillems/EMContaminator)
 Infer the fraction of sequencing data that comes from each individual in a population
 
 #### Author: Thomas Willems <tfwillems@gmail.com> <br> License: GNU v3
