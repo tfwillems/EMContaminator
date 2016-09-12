@@ -1,6 +1,7 @@
 [submodule "bamtools"]
 	path = bamtools
 	url = https://github.com/pezmaster31/bamtools.git
+	ignore = dirty
 [submodule "htslib"]
 	path = htslib
 	url = https://github.com/samtools/htslib.git

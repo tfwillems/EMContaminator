@@ -134,12 +134,13 @@ bool EMAnalyzer::analyze(BamTools::BamMultiReader& reader, double error_rate){
     // Extract the bases and quality scores stored at each SNP
     // SNPs without a matching base in the alignment will have a '-' character inserted
     std::vector<char> bases, quals;
-    extract_bases_and_qualities(alignment, snps, bases, quals);
+    std::vector<int> dists;
+    extract_bases_and_qualities(alignment, snps, bases, quals, dists);
 
     // Construct a new alignment entry
     aln_entries_.push_back(AlignmentEntry(num_samples_));
     for (unsigned int i = 0; i < snps.size(); i++){
-      if (bases[i] != '-'){
+      if (bases[i] != '-' && dists[i] >= DIST_BASE_FROM_INDEL){
 	aln_entries_.back().add_snp(snps[i], bases[i], quals[i]);
 	if (bases[i] == snps[i].ref() || bases[i] == snps[i].alt())
 	  snp_match_count++;

@@ -58,6 +58,9 @@ class EMAnalyzer {
   double ABS_LL_CONVERGE;   // For EM convergence, new_LL - prev_LL < ABS_LL_CONVERGE
   double FRAC_LL_CONVERGE;  // For EM convergence, -(new_LL-prev_LL)/prev_LL < FRAC_LL_CONVERGE
   double LOG_READ_PRIOR_PC; // Pseudocount used when recomputing sample priors
+
+  int DIST_BASE_FROM_INDEL; // Only consider a SNP if the base in the read is at least this many
+                            // base pairs from the nearest indel in its alignment
   
   void init_log_sample_priors(){
     if (init_randomly_){
@@ -75,12 +78,13 @@ class EMAnalyzer {
 
  public:
  EMAnalyzer(std::string& snp_vcf_file, bool init_randomly): snp_vcf_(snp_vcf_file){
-    num_samples_       = snp_vcf_.get_samples().size();
-    log_sample_priors_ = new double[num_samples_];
-    MAX_EM_ITER        = 100;
-    ABS_LL_CONVERGE    = 0.01;
-    FRAC_LL_CONVERGE   = 0.001;
-    LOG_READ_PRIOR_PC  = log(0.1);
+    num_samples_         = snp_vcf_.get_samples().size();
+    log_sample_priors_   = new double[num_samples_];
+    MAX_EM_ITER          = 100;
+    ABS_LL_CONVERGE      = 0.01;
+    FRAC_LL_CONVERGE     = 0.001;
+    LOG_READ_PRIOR_PC    = log(0.1);
+    DIST_BASE_FROM_INDEL = 7;
     init_log_sample_priors();
   }
 

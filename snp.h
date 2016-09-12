@@ -66,5 +66,5 @@ class SNPSorter {
 
 
 void extract_bases_and_qualities(BamTools::BamAlignment& aln, std::vector<SNP>& snps,
-				 std::vector<char>& bases,  std::vector<char>& quals);
+				 std::vector<char>& bases,  std::vector<char>& quals, std::vector<int>& dists);
 #endif
