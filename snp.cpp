@@ -6,6 +6,21 @@
 #include "error.h"
 #include "mathops.h"
 
+void SNP::print_base_log_likelihoods(char base, char quality, double log_correct, double log_error){
+  int gt;
+  if (base == ref_)
+    gt = 0;
+  else if (base == alt_)
+    gt = 1;
+  else
+    gt = -1;
+
+  std::cerr << "BASE LLs:" << "\n";
+  for (unsigned int i = 0; i < num_samples_; i++)
+    std::cerr << " " << i << " " << dosage_[i] << " " << gt << " " << get_base_log_likelihood(base, quality, i, log_correct, log_error) << "\n";
+  std::cerr << std::endl;
+}
+
 double SNP::get_base_log_likelihood(char base, char quality, int sample_index, double log_correct, double log_error){
   switch(dosage_[sample_index]){
   case 0:
@@ -37,7 +52,7 @@ void extract_bases_and_qualities_helper(BamTools::BamAlignment& aln,    bool for
 					SNPListIterator    snp_iter,    SNPListIterator     snp_end_iter,
 					CigarOpListIterator cigar_iter, CigarOpListIterator cigar_end_iter,
 					std::vector<char>& bases, std::vector<char>& quals, std::vector<int>& dists){
-  int32_t pos        = (forward ? aln.Position : aln.GetEndPosition());
+  int32_t pos        = (forward ? aln.Position : aln.GetEndPosition()-1);
   int32_t dist       = 0;
   const int32_t sign = (forward ? 1 : -1);
   bool (*comparator)(int32_t, int32_t) = (forward ? &less_than : &greater_than);
@@ -116,6 +131,7 @@ void extract_bases_and_qualities(BamTools::BamAlignment& aln, std::vector<SNP>& 
   std::vector<int>  fw_dists, bw_dists;
   extract_bases_and_qualities_helper(aln, true,  aln.QueryBases.begin(),  aln.Qualities.begin(),  snps.begin(),  snps.end(),  aln.CigarData.begin(),  aln.CigarData.end(),  fw_bases, fw_quals, fw_dists);
   extract_bases_and_qualities_helper(aln, false, aln.QueryBases.rbegin(), aln.Qualities.rbegin(), snps.rbegin(), snps.rend(), aln.CigarData.rbegin(), aln.CigarData.rend(), bw_bases, bw_quals, bw_dists);
+
   assert(fw_bases.size() == snps.size() && fw_quals.size() == snps.size() && fw_dists.size() == snps.size());
   assert(bw_bases.size() == snps.size() && bw_quals.size() == snps.size() && bw_dists.size() == snps.size());
 
