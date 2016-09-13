@@ -9,13 +9,16 @@ double AlignmentEntry::recalc_log_sample_posteriors(double* log_sample_priors, d
   std::memcpy(log_sample_posteriors_, log_sample_priors, num_samples_*sizeof(double));
   if (snps_.empty())
     return 0;
-  for(unsigned int i = 0; i < snps_.size(); i++)
+  for (unsigned int i = 0; i < snps_.size(); i++){
+    //snps_[i].print_base_log_likelihoods(bases_[i], qualities_[i], log_correct, log_error);
     for (unsigned int j = 0; j < num_samples_; j++)
       log_sample_posteriors_[j] += snps_[i].get_base_log_likelihood(bases_[i], qualities_[i], j, log_correct, log_error);
+  }
 
   double total_LL = log_sum_exp(log_sample_posteriors_, log_sample_posteriors_+num_samples_);
   for (int i = 0; i < num_samples_; i++)
     log_sample_posteriors_[i] -= total_LL;
+  assert(total_LL < TOLERANCE);
   return total_LL;
 }
 
@@ -50,6 +53,10 @@ bool EMAnalyzer::run_EM(double error_rate, double& LL){
     for (unsigned int i = 0; i < aln_entries_.size(); i++)
       new_LL += aln_entries_[i].recalc_log_sample_posteriors(log_sample_priors_, log_correct, log_error);
 
+    std::cerr << "ITER #" << num_iter << " , LL =" << new_LL << std::endl;
+    print_sample_priors(std::cerr);
+    std::cerr << std::endl << std::endl;
+
     // Occasionally the log-likelihood isn't monotonically increasing b/c of the pseudocounts
     // used when recalculating the sample fractions. Let's return true anyways
     assert(new_LL <= TOLERANCE);
@@ -71,6 +78,11 @@ bool EMAnalyzer::run_EM(double error_rate, double& LL){
     for (unsigned int i = 0; i < num_samples_; i++)
       log_sample_priors_[i] = finish_streaming_log_sum_exp(log_priors_max[i], log_priors_total[i]);
 
+    // Normalize the read ownership counts to obtain posteriors
+    double log_total_count = log_sum_exp(log_sample_priors_, log_sample_priors_+num_samples_);
+    for (unsigned int i = 0; i < num_samples_; i++)
+      log_sample_priors_[i] -= log_total_count;
+
     // Check for convergence
     double abs_change  = new_LL - LL;
     double frac_change = -(new_LL - LL)/LL;
@@ -85,26 +97,45 @@ bool EMAnalyzer::run_EM(double error_rate, double& LL){
   return false;
 }
 
+bool use_chrom(std::string& chrom){
+  if (chrom.find("_") != std::string::npos)
+    return false;
+  if (chrom.find("X") != std::string::npos)
+    return false;
+  if (chrom.find("Y") != std::string::npos)
+    return false;
+  if (chrom.find("M") != std::string::npos)
+    return false;
+  return true;
+}
+
 bool EMAnalyzer::analyze(BamTools::BamMultiReader& reader, double error_rate){
   int32_t snp_match_count = 0, snp_mismatch_count = 0;
   BamTools::RefVector ref_vector = reader.GetReferenceData();
 
   // Load and store all of the relevant alignment information
+  int32_t aln_count = 0, aln_with_snps_count = 0;
   BamTools::BamAlignment alignment;
-  while (reader.GetNextAlignmentCore(alignment)){
+  while (reader.GetNextAlignment(alignment)){
+    aln_count++;
+    if (aln_count % 1000 == 0)
+      std::cerr << aln_count << " " << aln_with_snps_count << std::endl;
     if (!alignment.IsMapped() || alignment.Position == 0 || alignment.CigarData.size() == 0 || alignment.Length == 0)
       continue;
 
     std::string chrom  = ref_vector[alignment.RefID].RefName;
     int32_t start      = alignment.Position;
-    int32_t end        = alignment.GetEndPosition();
-    
-    if(!snp_vcf_.set_region(chrom, start, end))
+    int32_t end        = alignment.GetEndPosition()-1;
+    if (!use_chrom(chrom))
+      continue;
+    if(!snp_vcf_.set_region(chrom, start+1, end+1))
       printErrorAndDie("Failed to set the region to chromosome " + chrom + " in the SNP VCF. Please check the SNP VCF and rerun the analysis");
 
     std::vector<SNP> snps;
+    std::vector<int32_t> snp_positions;
     VCF::Variant snp_variant;
     while (snp_vcf_.get_next_variant(snp_variant)){
+      snp_positions.push_back(snp_variant.get_position());
       if (!snp_variant.is_biallelic_snp())
 	continue;
 
@@ -128,7 +159,7 @@ bool EMAnalyzer::analyze(BamTools::BamMultiReader& reader, double error_rate){
 
       char ref = snp_variant.get_allele(0)[0];
       char alt = snp_variant.get_allele(1)[0];
-      snps.push_back(SNP(snp_variant.get_position(), ref, alt, gts_a, gts_b));
+      snps.push_back(SNP(snp_variant.get_position()-1, ref, alt, gts_a, gts_b));
     }
 
     // Extract the bases and quality scores stored at each SNP
@@ -149,6 +180,10 @@ bool EMAnalyzer::analyze(BamTools::BamMultiReader& reader, double error_rate){
       }
     }
 
+    if (aln_entries_.back().num_snps() > 0)
+      aln_with_snps_count++;
+    else
+      aln_entries_.pop_back();
     // TO DO: Discard entries with 0 informative SNPs?
   }
 

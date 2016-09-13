@@ -103,7 +103,7 @@ int main(int argc, char** argv){
 
   // Parameters to consider
   bool init_randomly = false;  // If true, randomly initialize contamination fractions. Otherwise, use a uniform prior
-  double error_rate  = 0.15;   // Error rate of sequencing data
+  double error_rate  = 0.01;   // Error rate of sequencing data
 
   std::stringstream full_command_ss;
   full_command_ss << "EMContaminator-" << VERSION;
@@ -114,9 +114,9 @@ int main(int argc, char** argv){
   std::string bam_file = "", snp_vcf_file = "";
   parse_command_line_args(argc, argv, bam_file, snp_vcf_file);
   if (bam_file.empty())
-    printErrorAndDie("You must specify either the --bam option");
+    printErrorAndDie("You must specify the --bam option");
   if (snp_vcf_file.empty())
-    printErrorAndDie("You must specify either the --snp-vcf option");
+    printErrorAndDie("You must specify the --vcf option");
 
   // Open all BAM files
   BamTools::BamMultiReader reader;

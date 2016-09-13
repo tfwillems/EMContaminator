@@ -23,12 +23,25 @@ class AlignmentEntry{
 
  public:
   AlignmentEntry(int num_samples){
+    num_samples_ = num_samples;
     log_sample_posteriors_ = new double[num_samples_];
+  }
+
+  AlignmentEntry(const AlignmentEntry& entry){
+    num_samples_ = entry.num_samples_;
+    snps_        = entry.snps_;
+    bases_       = entry.bases_;
+    qualities_   = entry.qualities_;
+    log_sample_posteriors_ = new double[num_samples_];
+    for (unsigned int i = 0; i < num_samples_; i++)
+      log_sample_posteriors_[i] = entry.log_sample_posteriors_[i];
   }
   
   ~AlignmentEntry(){
     delete [] log_sample_posteriors_;
   }
+
+  int num_snps(){ return snps_.size(); }
 
   void add_snp(SNP& snp, char base, char qual){
     snps_.push_back(snp);
@@ -85,6 +98,7 @@ class EMAnalyzer {
     FRAC_LL_CONVERGE     = 0.001;
     LOG_READ_PRIOR_PC    = log(0.1);
     DIST_BASE_FROM_INDEL = 7;
+    init_randomly_       = false;
     init_log_sample_priors();
   }
 
@@ -97,7 +111,7 @@ class EMAnalyzer {
   void print_sample_priors(std::ostream& out){
     const std::vector<std::string>& samples = snp_vcf_.get_samples();
     for (unsigned int i = 0; i < num_samples_; i++)
-      out << samples[i] << exp(log_sample_priors_[i]) << "\n";
+      out << samples[i] << " " << exp(log_sample_priors_[i]) << "\n";
     out << "\n";
   }
 };
